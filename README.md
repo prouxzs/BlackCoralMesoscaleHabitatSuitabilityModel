@@ -9,12 +9,16 @@ Existing habitat suitability models utilize the Coastal Relief Model to determin
   This code provides a framework to use raster data as predictors of presence or absence. You'll need rasters and presence/absence data with coordinates. Be sure your rasters and coordinates are from the same coordinate reference system.
 
 Structure of the Code-Base
+
   You'll need to load the following packages:
 	library("raster","rgdal","sp")
   
 How to Recreate Results
+
   All you need to do to recreate the code is change the name of the imported files to your file names.
 
 Acknowledgements
+
   NOAA's Deep Coral Ecology Laboratory provided the presence/absence data 
+  
   NOAA Ship Nancy Foster collected the multibeam data in 2008
