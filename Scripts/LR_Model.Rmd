@@ -1,0 +1,85 @@
+---
+title: "Modeling Black Coral Presence on the West Florida Escarpment"
+author: "Zach Proux"
+date: "3/28/2018"
+output: html_document
+---
+```{r setup, echo=FALSE}
+# setup the R enviornment for kniting markdown doc properly
+library(knitr)
+opts_knit$set(root.dir='../')
+```
+
+```{r}
+# Install spatial analyst packages
+install.packages(c("maps","sp","maptools","lattice","classInt","rtiff","rgdal","raster"))
+```
+
+```{r}
+# Load necessary packages
+library(raster)
+library(rgdal)
+library(sp)
+```
+
+```{r}
+# Import coral presence/absence data and make it a data.frame
+bcoral = read.csv("./Data/Tables/Black_Coral_P&amp;A.csv")
+coral = data.frame(bcoral)
+```
+
+```{r}
+# Reproject lat_long to WGS 1984 World Mercator to match rasters
+lon <- coral$LongitudeDD
+lat <- coral$LatitudeDD
+xy <- cbind(lon, lat) 
+project(xy, "+proj=utm +zone=51 ellps=WGS84") 
+```
+
+```{r}
+# Import raster data 
+aspect = raster("./Data/Rasters/Clip_Aspect1.tif")
+slope = raster("./Data/Rasters/Clip_Slope1.tif")
+depth = raster("./Data/Rasters/Clip_Depth1.tif")
+intensity = raster("./Data/Rasters/Clip_Intensity1.tif")
+```
+
+```{r}
+# Attempt to group files for stacking
+files = c(aspect, slope, depth, intensity)
+files = c("./Data/Rasters/Clip_Aspect1.tif", "./Data/Rasters/Clip_Slope1.tif", "./Data/Rasters/Clip_Depth1.tif", "./Data/Rasters/Clip_Intensity1.tif")
+```
+
+```{r}
+# Stack the raster data
+RaStack = stack(files, RAT = TRUE)
+```
+
+```{r}
+# Extract environmental variables for each coordinate
+EnVar = extract(RaStack, lat_long)
+```
+
+```{r}
+# Use environmental variables as inputs in a binomial logistic regression
+
+# Check residuals for normality
+```
+
+```{r}
+# Check model for spatial dependence
+```
+
+```{r}
+# Cross-validate model and produce predictive values for each 10m pixel
+```
+
+```{r}
+# Plot likelihood of occurrence on map
+```
+
+
+
+
+
+
