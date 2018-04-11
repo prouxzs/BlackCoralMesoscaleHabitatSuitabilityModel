@@ -30,10 +30,11 @@ coral = data.frame(bcoral)
 
 ```{r}
 # Reproject lat_long to WGS 1984 World Mercator to match rasters
-lon <- coral$LongitudeDD
-lat <- coral$LatitudeDD
+lon = coral$LongitudeDD
+lat = coral$LatitudeDD
 xy = SpatialPoints(cbind(lon, lat), proj4string=CRS("+proj=longlat"))
-xy.UTM <- spTransform(xy, CRS("+init=epsg:32616"))
+xy.UTM = spTransform(xy, CRS("+init=epsg:32616"))
+UTM.latlon = as.data.frame(xy.UTM)
 ```
 
 ```{r}
@@ -59,19 +60,84 @@ RaStack = stack(files, RAT = TRUE)
 EnVar = extract(RaStack, xy.UTM)
 EnVar.df = as.data.frame(EnVar)
 # Bind environmental variables to their respective coral presence/absence observations
-ModVar = cbind(coral, EnVar.df)
+ModVar = cbind(coral, EnVar.df, UTM.latlon)
 # Eliminate observations with no environmental data
 work = ModVar[complete.cases(ModVar),]
 ```
 
 ```{r}
 # Use environmental variables as inputs in a binomial logistic regression
+mod1 = glm(work$Presence ~ work$Clip_Depth1 + work$Clip_Slope1 + work$Clip_Aspect1
+           + work$Clip_Intensity1 + work$lon + work$lat, family = "binomial")
+# AIC = 725.18
+# Only Aspect was significant
+# Considering longitude and depth are related as you move westward from the coast
+# of West Florida, I chose to only use depth because it may also be indicative of 
+# other water quality properties or physical parameters.
+```
 
-# Check residuals for normality
+```{r}
+# Narrow down the number of independent variables based on significance
+mod2 = glm(work$Presence ~ work$Clip_Slope1 + work$Clip_Aspect1
+           + work$Clip_Intensity1 + work$Clip_Depth1 + work$lat, family = "binomial")
+# AIC = 725.44
+# Depth and Aspect were significant.  Slope and intensity were trending.
+# Latitude was not significant.
+```
+
+```{r}
+mod3 = glm(work$Presence ~ work$Clip_Slope1 + work$Clip_Aspect1 + work$Clip_Intensity1
+           + work$Clip_Depth1, family = "binomial")
+summary(mod3)
+# AIC = 723.59
+# All variables significant except intensity
+```
+
+```{r}
+mod4 = glm(work$Presence ~ work$Clip_Slope1 + work$Clip_Aspect1 + work$Clip_Depth1,
+           family = "binomial")
+# AIC = 724.27
+# Performed slightly worse than mod3 so I left intensity in.
+# Mod3 is the winner
+```
+
+```{r}
+# Cut data frame to just the variables I want
+work.cut = subset(work, select = c(Clip_Aspect1, Clip_Slope1, Clip_Depth1, 
+                                   Clip_Intensity1, Presence))
+# Cross-Validate the glm 
+library(boot)
+k = 10
+cv.mod3 = cv.glm(work.cut, mod3, K = k)
+cv.mod3
+```
+
+```{r}
+library(caret)
+# Cross-Validate the glm 
+Train <- createDataPartition(work.cut$Presence, p=0.6, list=FALSE)
+training <- work.cut[ Train, ]
+testing <- work.cut[ -Train, ]
+mod.fit = train(Presence ~ Clip_Slope1 + Clip_Aspect1 + Clip_Intensity1 + 
+                  Clip_Depth1, data = work.cut, method = "glm", family = "binomial")
+```
+
+```{r}
+# Check residuals
+plot(mod3)
+plot(work$Presence ~ work$lon)
 ```
 
 ```{r}
 # Check model for spatial dependence
+sr = apply(work, 1, function(x) sum(x > 0))
+plot(UTM.latlon, cex=sr/max(sr))
+col_brks = hist(sr, plot=F)$breaks
+col_indices = as.numeric(cut(sr, col_brks))
+cols = rev(terrain.colors(length(col_brks)))
+plot(UTM.latlon, cex=2, pch=19, col=cols[col_indices])
+sr_dist = dist(sr)
+xy_dist = dist(UTM.latlon)
 ```
 
 ```{r}
