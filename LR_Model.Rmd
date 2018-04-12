@@ -4,16 +4,10 @@ author: "Zach Proux"
 date: "3/28/2018"
 output: html_document
 ---
-```{r setup, echo=FALSE}
-# setup the R enviornment for kniting markdown doc properly
-library(knitr)
-opts_knit$set(root.dir='./')
-```
 
-```{r}
 # Install spatial analyst packages
 install.packages(c("maps","sp","maptools","lattice","classInt","rtiff","rgdal","raster"))
-```
+
 
 ```{r}
 # Load necessary packages
@@ -105,6 +99,9 @@ mod4 = glm(work$Presence ~ work$Clip_Slope1 + work$Clip_Aspect1 + work$Clip_Dept
 # Cut data frame to just the variables I want
 work.cut = subset(work, select = c(Clip_Aspect1, Clip_Slope1, Clip_Depth1, 
                                    Clip_Intensity1, Presence))
+```
+
+```{r}
 # Cross-Validate the glm 
 library(boot)
 k = 10
@@ -113,19 +110,32 @@ cv.mod3
 ```
 
 ```{r}
-library(caret)
 # Cross-Validate the glm 
-Train <- createDataPartition(work.cut$Presence, p=0.6, list=FALSE)
-training <- work.cut[ Train, ]
-testing <- work.cut[ -Train, ]
-mod.fit = train(Presence ~ Clip_Slope1 + Clip_Aspect1 + Clip_Intensity1 + 
-                  Clip_Depth1, data = work.cut, method = "glm", family = "binomial")
+allrows = 1:nrow(work.cut)
+trainrows = sample(allrows, replace = F, size = 0.5*length(allrows))
+testrows = allrows[-trainrows]
+train = work.cut[trainrows,]
+test = work.cut[testrows,]
+
+train.mod = glm(Presence ~ Clip_Aspect1 + Clip_Slope1 + Clip_Intensity1 + Clip_Depth1,
+                data = train, family = "binomial")
+summary(train.mod)
+test.mod = glm(Presence ~ Clip_Aspect1 + Clip_Slope1 + Clip_Intensity1 + Clip_Depth1,
+                data = test, family = "binomial")
+summary(test.mod)
 ```
 
 ```{r}
+# Calculate RMS to compare models
+fitted = 278.18
+observed = 428.97
+RMSE = sqrt((fitted-observed)^2/ nrow(test))
+RMSE
+```
+
+
+```{r}
 # Check residuals
-plot(mod3)
-plot(work$Presence ~ work$lon)
 ```
 
 ```{r}
@@ -136,8 +146,6 @@ col_brks = hist(sr, plot=F)$breaks
 col_indices = as.numeric(cut(sr, col_brks))
 cols = rev(terrain.colors(length(col_brks)))
 plot(UTM.latlon, cex=2, pch=19, col=cols[col_indices])
-sr_dist = dist(sr)
-xy_dist = dist(UTM.latlon)
 ```
 
 ```{r}
