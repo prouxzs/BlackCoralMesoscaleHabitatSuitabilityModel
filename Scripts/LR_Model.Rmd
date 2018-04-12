@@ -55,6 +55,7 @@ EnVar.df = as.data.frame(EnVar)
 ModVar = cbind(coral, EnVar.df, UTM.latlon)
 # Eliminate observations with no environmental data
 work = ModVar[complete.cases(ModVar),]
+write.csv(work, 'work.csv')
 ```
 
 ```{r}
@@ -186,6 +187,8 @@ logit2prob = function(mod3.ras){
 bc.prob = logit2prob(mod3.ras)
 plot(bc.prob)
 # May be easier to plot this prediction raster in ArcMap to get figures.
+# Save raster in format that's compatible with ArcGIS to stage maps for presentation
+writeRaster(bc.prob, "Anti.Prob", format = "GTiff")
 ```
 
 The predictive probability raster (bc.prob) predicts less than a 10% chance of occurrence almost throughout the entire raster.  Based on previous ROV dives, I know this model drastically under predicts coral presence and is not very useful.  Adding more presence observations to the original dataset should help the model delineate between likely presence conditions and likely absence conditions.
