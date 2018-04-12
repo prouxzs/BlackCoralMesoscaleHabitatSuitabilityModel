@@ -5,9 +5,7 @@ date: "3/28/2018"
 output: html_document
 ---
 
-# Install spatial analyst packages
-install.packages(c("maps","sp","maptools","lattice","classInt","rtiff","rgdal","raster"))
-
+# Please be sure to read the "README.md" in the repository before proceeding.
 
 ```{r}
 # Load necessary packages
@@ -80,8 +78,8 @@ mod2 = glm(work$Presence ~ work$Clip_Slope1 + work$Clip_Aspect1
 ```
 
 ```{r}
-mod3 = glm(work$Presence ~ work$Clip_Slope1 + work$Clip_Aspect1 + work$Clip_Intensity1
-           + work$Clip_Depth1, family = "binomial")
+mod3 = glm(Presence ~ Clip_Slope1 + Clip_Aspect1 + Clip_Intensity1 + Clip_Depth1,
+           data = work, family = "binomial")
 summary(mod3)
 # AIC = 723.59
 # All variables significant except intensity
@@ -106,34 +104,62 @@ work.cut = subset(work, select = c(Clip_Aspect1, Clip_Slope1, Clip_Depth1,
 library(boot)
 k = 10
 cv.mod3 = cv.glm(work.cut, mod3, K = k)
-cv.mod3
+# Delta = 0.234
 ```
 
 ```{r}
-# Cross-Validate the glm 
+# Alternative Cross-validation Method
+# Split the dataframe into two randomly sorted data frames 
 allrows = 1:nrow(work.cut)
 trainrows = sample(allrows, replace = F, size = 0.5*length(allrows))
 testrows = allrows[-trainrows]
 train = work.cut[trainrows,]
 test = work.cut[testrows,]
-
-train.mod = glm(Presence ~ Clip_Aspect1 + Clip_Slope1 + Clip_Intensity1 + Clip_Depth1,
-                data = train, family = "binomial")
-summary(train.mod)
-test.mod = glm(Presence ~ Clip_Aspect1 + Clip_Slope1 + Clip_Intensity1 + Clip_Depth1,
-                data = test, family = "binomial")
-summary(test.mod)
 ```
 
 ```{r}
-# Calculate RMS to compare models
-fitted = 278.18
-observed = 428.97
-RMSE = sqrt((fitted-observed)^2/ nrow(test))
-RMSE
+# Create models from training dataframe
+train.mod = glm(Presence ~ Clip_Aspect1 + Clip_Slope1 + Clip_Intensity1 + Clip_Depth1,
+                data = train, family = "binomial")
+summary(train.mod)
+# AIC = 370.7 
+# Predict response 0-1 based on test data frame
+pre.test = predict.glm(train.mod, test, type = "response")
+# Calculate Root Mean Square to test model performance
+RMSE = mean((test$Presence - pre.test)^2)
+# RMSE = .02201
 ```
 
+```{r}
+# Create model from testing dataframe
+test.mod = glm(Presence ~ Clip_Aspect1 + Clip_Slope1 + Clip_Intensity1 + Clip_Depth1,
+                data = test, family = "binomial")
+summary(test.mod)
+# AIC = 358.42
+# Predict response 0-1 based on train data frame
+pre.train = predict.glm(test.mod, train, type = "response")
+# Calculate Root Mean Square to test model performance
+RMSE2 = mean((train$Presence - pre.train)^2)
+# RMSE2 = 0.02263
+```
 
+```{r}
+# Produce predictive values for each 10m pixel
+mod3.map = predict(RaStack, mod3)
+# Plot likelihood of occurrence on map
+plot(mod3.map)
+```
+# 
+#
+#
+#
+#
+# Below this point, I am still working and you should not expect this code to run.
+#
+#
+#
+#
+#
 ```{r}
 # Check residuals
 ```
@@ -147,17 +173,4 @@ col_indices = as.numeric(cut(sr, col_brks))
 cols = rev(terrain.colors(length(col_brks)))
 plot(UTM.latlon, cex=2, pch=19, col=cols[col_indices])
 ```
-
-```{r}
-# Cross-validate model and produce predictive values for each 10m pixel
-```
-
-```{r}
-# Plot likelihood of occurrence on map
-```
-
-
-
-
-
 
