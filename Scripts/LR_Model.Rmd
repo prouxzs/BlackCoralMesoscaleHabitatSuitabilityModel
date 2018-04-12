@@ -16,7 +16,7 @@ library(sp)
 
 ```{r}
 # Import coral presence/absence data and make it a data.frame
-bcoral = read.csv("./Data/Black_Coral_P&amp;A.csv")
+bcoral = read.csv("../Data/Black_Coral_P&amp;A.csv")
 coral = data.frame(bcoral)
 ```
 
@@ -31,15 +31,15 @@ UTM.latlon = as.data.frame(xy.UTM)
 
 ```{r}
 # Import raster data 
-aspect = raster("./Data/Clip_Aspect1.tif")
-slope = raster("./Data/Clip_Slope1.tif")
-depth = raster("./Data/Clip_Depth1.tif")
-intensity = raster("./Data/Clip_Intensity1.tif")
+aspect = raster("../Data/Clip_Aspect1.tif")
+slope = raster("../Data/Clip_Slope1.tif")
+depth = raster("../Data/Clip_Depth1.tif")
+intensity = raster("../Data/Clip_Intensity1.tif")
 ```
 
 ```{r}
 # Group files for stacking
-files = c("./Data/Clip_Aspect1.tif", "./Data/Clip_Slope1.tif", "./Data/Clip_Depth1.tif", "./Data/Clip_Intensity1.tif")
+files = c("../Data/Clip_Aspect1.tif", "../Data/Clip_Slope1.tif", "../Data/Clip_Depth1.tif", "../Data/Clip_Intensity1.tif")
 ```
 
 ```{r}
@@ -86,6 +86,19 @@ summary(mod3)
 ```
 
 ```{r}
+# Check residuals
+plot(mod3)
+# Difficult to interpret some of these plots, but there appears to be two distinct
+# portions of the model.  The residuals don't appear to be normally distributed.
+# Calculate R-squared
+R2logit = function(mod3){
+    R2 = 1-(mod3$deviance/mod3$null.deviance)
+    return(R2)
+    }
+R2logit(mod3)
+```
+
+```{r}
 mod4 = glm(work$Presence ~ work$Clip_Slope1 + work$Clip_Aspect1 + work$Clip_Depth1,
            family = "binomial")
 # AIC = 724.27
@@ -122,6 +135,8 @@ test = work.cut[testrows,]
 train.mod = glm(Presence ~ Clip_Aspect1 + Clip_Slope1 + Clip_Intensity1 + Clip_Depth1,
                 data = train, family = "binomial")
 summary(train.mod)
+R2logit(train.mod)
+# R2 = 0.095
 # AIC = 370.7 
 # Predict response 0-1 based on test data frame
 pre.test = predict.glm(train.mod, test, type = "response")
@@ -135,6 +150,8 @@ RMSE = mean((test$Presence - pre.test)^2)
 test.mod = glm(Presence ~ Clip_Aspect1 + Clip_Slope1 + Clip_Intensity1 + Clip_Depth1,
                 data = test, family = "binomial")
 summary(test.mod)
+R2logit(test.mod)
+# R2 = 0.061
 # AIC = 358.42
 # Predict response 0-1 based on train data frame
 pre.train = predict.glm(test.mod, train, type = "response")
@@ -143,34 +160,35 @@ RMSE2 = mean((train$Presence - pre.train)^2)
 # RMSE2 = 0.02263
 ```
 
+Overall, the models did well acccording to RMSE.  One potential problem is the maximum probability in either model was only 0.19 which means they basically predict absence everywhere.  So while they may have performed well, it could just be due to the fact the number of absence observations is much greater than the number of presence observations.  More data may increase the predictive power.
+
 ```{r}
-# Produce predictive values for each 10m pixel
-mod3.map = predict(RaStack, mod3)
-# Plot likelihood of occurrence on map
-plot(mod3.map)
-```
-# 
-#
-#
-#
-#
-# Below this point, I am still working and you should not expect this code to run.
-#
-#
-#
-#
-#
-```{r}
-# Check residuals
+# Compare the predictive values to the observed values graphically
+mod.perf = as.data.frame(cbind(test$Presence, pre.train))
+ones = mod.perf[mod.perf$V1 == 1,]
+zeros = mod.perf[mod.perf$V1 == 0,]
+boxplot(mod.perf$pre.train ~ mod.perf$V1, ylab = "Predicted Probability of Antipatharian Occurence", 
+        xlab = "Observed Presence or Absence")
+t.test(mod.perf$pre.train, mod.perf$V1)
+# P = 0.99
+# Almost no difference whatsoever between the predicted values for presence observations and absence observations.
 ```
 
 ```{r}
-# Check model for spatial dependence
-sr = apply(work, 1, function(x) sum(x > 0))
-plot(UTM.latlon, cex=sr/max(sr))
-col_brks = hist(sr, plot=F)$breaks
-col_indices = as.numeric(cut(sr, col_brks))
-cols = rev(terrain.colors(length(col_brks)))
-plot(UTM.latlon, cex=2, pch=19, col=cols[col_indices])
+# Produce predictive values for each 10m pixel
+mod3.ras = predict(RaStack, mod3)
+# Transform logit scale to probabilities
+logit2prob = function(mod3.ras){
+  odds = exp(mod3.ras)
+  prob = odds / (1 + odds)
+  return(prob)
+}
+bc.prob = logit2prob(mod3.ras)
+plot(bc.prob)
+# May be easier to plot this prediction raster in ArcMap to get figures.
 ```
+
+The predictive probability raster (bc.prob) predicts less than a 10% chance of occurrence almost throughout the entire raster.  Based on previous ROV dives, I know this model drastically under predicts coral presence and is not very useful.  Adding more presence observations to the original dataset should help the model delineate between likely presence conditions and likely absence conditions.
+ 
+
 
