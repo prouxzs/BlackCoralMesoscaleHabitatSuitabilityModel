@@ -64,9 +64,7 @@ mod1 = glm(work$Presence ~ work$Clip_Depth1 + work$Clip_Slope1 + work$Clip_Aspec
            + work$Clip_Intensity1 + work$lon + work$lat, family = "binomial")
 # AIC = 725.18
 # Only Aspect was significant
-# Considering longitude and depth are related as you move westward from the coast
-# of West Florida, I chose to only use depth because it may also be indicative of 
-# other water quality properties or physical parameters.
+# Considering longitude and depth are related as you move westward from the coast of West Florida, I chose to only use depth because it may also be indicative of other water quality properties or physical parameters.
 ```
 
 ```{r}
@@ -89,8 +87,7 @@ summary(mod3)
 ```{r}
 # Check residuals
 plot(mod3)
-# Difficult to interpret some of these plots, but there appears to be two distinct
-# portions of the model.  The residuals don't appear to be normally distributed.
+# Difficult to interpret some of these plots, but there appears to be two distinct portions of the model.  The residuals don't appear to be normally distributed.
 # Calculate R-squared
 R2logit = function(mod3){
     R2 = 1-(mod3$deviance/mod3$null.deviance)
@@ -188,10 +185,21 @@ bc.prob = logit2prob(mod3.ras)
 plot(bc.prob)
 # May be easier to plot this prediction raster in ArcMap to get figures.
 # Save raster in format that's compatible with ArcGIS to stage maps for presentation
-writeRaster(bc.prob, "Anti.Prob", format = "GTiff")
+writeRaster(bc.prob, "Anti.Prob", format = "GTiff", overwrite = TRUE)
 ```
 
 The predictive probability raster (bc.prob) predicts less than a 10% chance of occurrence almost throughout the entire raster.  Based on previous ROV dives, I know this model drastically under predicts coral presence and is not very useful.  Adding more presence observations to the original dataset should help the model delineate between likely presence conditions and likely absence conditions.
  
+```{r}
+# Upon further consideration, depth should not be included in the model because all of the data were collected in a relatively narrow range of depths (~350 - 700 m) and the deep-sea coral in question, antipatharians, are known to occur throughout that range.  Therefore, it is not likely that depth plays a significant role in determining presence or absence at this scale.  Depth may be an important variable should the model be scaled up to include a wider range of depths.
+mod5 = glm(work$Presence ~ work$Clip_Slope1 + work$Clip_Aspect1 + work$Clip_Intensity1,
+           family = "binomial")
+summary(mod5)
+# AIC = 749.68
+R2logit(mod5)
+# R2 = 0.038
+# After taking depth out, the AIC increased and the R squared decreased.  The model performed better when depth was included which doesn't make intuitive sense given what we know about black corals in this depth range.
+```
+
 
 
